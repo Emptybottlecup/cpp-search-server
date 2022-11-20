@@ -252,6 +252,7 @@ void PrintDocument(const Document& document) {
 }
 
 int main() {
+    setlocale(LC_ALL, "Russian");
     SearchServer search_server;
     search_server.SetStopWords("и в на"s);
     search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
