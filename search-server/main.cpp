@@ -75,11 +75,12 @@ public:
         }
         documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
     }
-    template<typename T>
+
+    template<typename Filter>
     vector<Document> FindTopDocuments(const string& raw_query,
-        T t) const {
+        Filter filter) const {
         const Query query = ParseQuery(raw_query);
-        auto matched_documents = FindAllDocuments(query, t);
+        auto matched_documents = FindAllDocuments(query, filter);
 
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
@@ -96,11 +97,7 @@ public:
         return matched_documents;
     }
 
-    vector<Document> FindTopDocuments(const string& raw_query) const {
-        const auto t = [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::ACTUAL; };
-        return FindTopDocuments(raw_query, t);
-    }
-    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status_2) const {
+    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status_2 = DocumentStatus::ACTUAL) const {
         return FindTopDocuments(raw_query, [status_2](int document_id, DocumentStatus status, int rating) { return status == status_2; });
     }
 
@@ -209,8 +206,8 @@ private:
         return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
     }
 
-    template<typename T>
-    vector<Document> FindAllDocuments(const Query& query, T t) const {
+    template<typename Filter>
+    vector<Document> FindAllDocuments(const Query& query, Filter filter) const {
         map<int, double> document_to_relevance;
         for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
@@ -218,7 +215,7 @@ private:
             }
             const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
             for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
-                if (t(document_id, (documents_.at(document_id)).status, (documents_.at(document_id)).rating)) {
+                if (filter(document_id, (documents_.at(document_id)).status, (documents_.at(document_id)).rating)) {
                     document_to_relevance[document_id] += term_freq * inverse_document_freq;
                 }
             }
@@ -242,8 +239,6 @@ private:
     }
 };
 
-// ==================== для примера =========================
-
 void PrintDocument(const Document& document) {
     cout << "{ "s
         << "document_id = "s << document.id << ", "s
@@ -252,7 +247,6 @@ void PrintDocument(const Document& document) {
 }
 
 int main() {
-    setlocale(LC_ALL, "Russian");
     SearchServer search_server;
     search_server.SetStopWords("и в на"s);
     search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
@@ -263,8 +257,8 @@ int main() {
     for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s)) {
         PrintDocument(document);
     }
-    cout << "ACTUAL:"s << endl;
-    for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::ACTUAL; })) {
+    cout << "BANNED:"s << endl;
+    for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED)) {
         PrintDocument(document);
     }
     cout << "Even ids:"s << endl;
