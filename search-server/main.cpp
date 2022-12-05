@@ -61,18 +61,21 @@ void TestMatching() {
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-        server.SetStopWords("in");
-        auto [words_1, status_1] = server.MatchDocument("in", doc_id);
-        ASSERT_EQUAL(words_1.size(), 0);
         auto [words, status] = server.MatchDocument("in the", doc_id);
-        ASSERT_EQUAL(words.size(), 1);
+        ASSERT_EQUAL(words.size(), 2);
         ASSERT(DocumentStatus::ACTUAL == status);
         vector<string> raw_query = SplitIntoWords("in the");
-        int value = 0;
-        for (auto word : raw_query) {
-            value += count(words.begin(), words.end(), word);
-        }
-        ASSERT(value >= 1);
+        ASSERT(words == raw_query);
+        auto [words_2, status_2] = server.MatchDocument("scum", doc_id);
+        ASSERT(words_2.empty());
+        auto [words_3, status_3] = server.MatchDocument("in the scum", doc_id);
+        vector<string> raw_query_2 = SplitIntoWords("in the scum");
+        ASSERT(!(words_3.empty()));
+        ASSERT(words_3.size() == 2);
+        ASSERT(words_3[0] == raw_query_2[0]);
+        ASSERT(words_3[1] == raw_query_2[1]);
+        ASSERT(words_3[3] != raw_query_2[3]);
+
 
 
 
@@ -122,16 +125,6 @@ void TestRating() {
     }
 
 }
-void TestCalcRating() {
-    SearchServer server;
-    server.AddDocument(1, "Amg mercedes 5 "s, DocumentStatus::ACTUAL, { 1, 2, 3 });
-    server.AddDocument(2, "Bmw m5 cs"s, DocumentStatus::ACTUAL, { 0, 0, 0 });
-    server.AddDocument(3, "Kebab Turkey"s, DocumentStatus::ACTUAL, { 10, 20, 30 });
-    const auto documents = server.FindTopDocuments("Kebab cs 5");
-    ASSERT(documents[0].rating == 20);
-    ASSERT(documents[1].rating == 2);
-    ASSERT(documents[2].rating == 0);
-}
 
 void TestPredicate() {
     SearchServer server;
@@ -159,8 +152,30 @@ void TestStatusFilter() {
     ASSERT(documents_3.size() == 2);
     ASSERT(documents_3[0].id == 3);
     ASSERT(documents_3[1].id == 4);
+    const auto  documents_4 = server.FindTopDocuments("Kebab cs 5", DocumentStatus::IRRELEVANT);
+    ASSERT(documents_4.empty());
 }
+void TestRelevanceCalc() {
+    SearchServer server;
+    server.AddDocument(1, "Amg mercedes 5 "s, DocumentStatus::ACTUAL, { 1, 2, 3 });
+    server.AddDocument(2, "Bmw m5 cs 5"s, DocumentStatus::ACTUAL, { 0, 0, 0 });
+    server.AddDocument(3, "Kebab Turkey cs 5"s, DocumentStatus::ACTUAL, { 10, 20, 30 });
+    vector<string> raw_query = { "Kebab","cs","5" };
+    vector<Document> documents = server.FindTopDocuments("Kebab cs 5");
+    double IDF_Kebab = log(3.0 / 1.0);
+    double IDF_cs = log(3.0 / 2.0);
+    double IDF_5 = log(3.0 / 3.0);
+    double tf_Kebab_1 = 0.0 / 3.0, tf_cs_1 = 0.0 / 3.0, tf_5_1 = 1.0 / 3.0;
+    double tf_Kebab_2 = 0.0 / 4.0, tf_cs_2 = 1.0 / 4.0, tf_5_2 = 1.0 / 4.0;
+    double tf_Kebab_3 = 1.0 / 4.0, tf_cs_3 = 1.0 / 4.0, tf_5_3 = 1.0 / 4.0;
+    double relevance_1 = IDF_Kebab * tf_Kebab_1 + IDF_cs * tf_cs_1 + IDF_5 * tf_5_1;
+    double relevance_2 = IDF_Kebab * tf_Kebab_2 + IDF_cs * tf_cs_2 + IDF_5 * tf_5_2;
+    double relevance_3 = IDF_Kebab * tf_Kebab_3 + IDF_cs * tf_cs_3 + IDF_5 * tf_5_3;
+    ASSERT(documents[2].relevance == relevance_1);
+    ASSERT(documents[1].relevance == relevance_2);
+    ASSERT(documents[0].relevance == relevance_3);
 
+}
 
 
 
@@ -172,7 +187,7 @@ void TestSearchServer() {
     RUN_TEST(TestSort);
     RUN_TEST(TestRating);
     RUN_TEST(TestMatching);
-    RUN_TEST(TestCalcRating);
     RUN_TEST(TestPredicate);
     RUN_TEST(TestStatusFilter);
+    RUN_TEST(TestRelevanceCalc);
 }
