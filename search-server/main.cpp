@@ -1,3 +1,4 @@
+
 void TestExcludeStopWordsFromAddedDocumentContent() {
     const int doc_id = 42;
     const string content = "cat in the city"s;
@@ -56,30 +57,49 @@ void TestMatching() {
     const int doc_id = 42;
     const string content = "cat in the city"s;
     const vector<int> ratings = { 1, 2, 3 };
-
-
-    {
-        SearchServer server;
-        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-        auto [words, status] = server.MatchDocument("in the", doc_id);
-        ASSERT_EQUAL(words.size(), 2);
-        ASSERT(DocumentStatus::ACTUAL == status);
-        vector<string> raw_query = SplitIntoWords("in the");
-        ASSERT(words == raw_query);
-        auto [words_2, status_2] = server.MatchDocument("scum", doc_id);
-        ASSERT(words_2.empty());
-        auto [words_3, status_3] = server.MatchDocument("in the scum", doc_id);
-        vector<string> raw_query_2 = SplitIntoWords("in the scum");
-        ASSERT(!(words_3.empty()));
-        ASSERT(words_3.size() == 2);
-        ASSERT(words_3[0] == raw_query_2[0]);
-        ASSERT(words_3[1] == raw_query_2[1]);
-        ASSERT(words_3[3] != raw_query_2[3]);
-
-
-
-
+    { SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    auto [words, status] = server.MatchDocument("in the", doc_id);
+    ASSERT_EQUAL(words.size(), 2);
+    ASSERT(DocumentStatus::ACTUAL == status);
+    ASSERT(DocumentStatus::IRRELEVANT != status);
+    ASSERT(DocumentStatus::REMOVED != status);
+    ASSERT(DocumentStatus::BANNED != status);
+    vector<string> raw_query = SplitIntoWords("in the");
+    ASSERT(words == raw_query);
     }
+
+    { SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    auto [words, status] = server.MatchDocument("scum", doc_id);
+    ASSERT(words.empty());
+    }
+
+    { SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    auto [words, status] = server.MatchDocument("in the scum", doc_id);
+    vector<string> raw_query = SplitIntoWords("in the scum");
+    ASSERT(!(words.empty()));
+    ASSERT(raw_query.size() > words.size());
+    ASSERT(words.size() == 2);
+    ASSERT(words[0] == raw_query[0]);
+    ASSERT(words[1] == raw_query[1]);
+    }
+
+    { SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    auto [words, status] = server.MatchDocument("in -the ", doc_id);
+    ASSERT(words.empty());
+    }
+
+    { SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    server.SetStopWords("in");
+    auto [words, status] = server.MatchDocument("in the", doc_id);
+    ASSERT(words.size() == 1);
+    ASSERT(words[0] == "the");
+    }
+
 }
 
 void TestSort() {
@@ -171,14 +191,11 @@ void TestRelevanceCalc() {
     double relevance_1 = IDF_Kebab * tf_Kebab_1 + IDF_cs * tf_cs_1 + IDF_5 * tf_5_1;
     double relevance_2 = IDF_Kebab * tf_Kebab_2 + IDF_cs * tf_cs_2 + IDF_5 * tf_5_2;
     double relevance_3 = IDF_Kebab * tf_Kebab_3 + IDF_cs * tf_cs_3 + IDF_5 * tf_5_3;
-    ASSERT(documents[2].relevance == relevance_1);
-    ASSERT(documents[1].relevance == relevance_2);
-    ASSERT(documents[0].relevance == relevance_3);
+    ASSERT(abs(documents[2].relevance - relevance_1) < 1e-6);
+    ASSERT(abs(documents[1].relevance - relevance_2) < 1e-6);
+    ASSERT(abs(documents[0].relevance - relevance_3) < 1e-6);
 
 }
-
-
-
 
 void TestSearchServer() {
     RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
