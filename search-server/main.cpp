@@ -1,4 +1,3 @@
-
 void TestExcludeStopWordsFromAddedDocumentContent() {
     const int doc_id = 42;
     const string content = "cat in the city"s;
@@ -57,47 +56,53 @@ void TestMatching() {
     const int doc_id = 42;
     const string content = "cat in the city"s;
     const vector<int> ratings = { 1, 2, 3 };
-    { SearchServer server;
-    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-    auto [words, status] = server.MatchDocument("in the", doc_id);
-    ASSERT_EQUAL(words.size(), 2);
-    ASSERT(DocumentStatus::ACTUAL == status);
-    ASSERT(DocumentStatus::IRRELEVANT != status);
-    ASSERT(DocumentStatus::REMOVED != status);
-    ASSERT(DocumentStatus::BANNED != status);
-    vector<string> raw_query = SplitIntoWords("in the");
-    ASSERT(words == raw_query);
+
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        auto [words, status] = server.MatchDocument("in the", doc_id);
+        ASSERT_EQUAL(words.size(), 2);
+        ASSERT(DocumentStatus::ACTUAL == status);
+        ASSERT(DocumentStatus::IRRELEVANT != status);
+        ASSERT(DocumentStatus::REMOVED != status);
+        ASSERT(DocumentStatus::BANNED != status);
+        vector<string> raw_query = SplitIntoWords("in the");
+        ASSERT(words == raw_query);
     }
 
-    { SearchServer server;
-    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-    auto [words, status] = server.MatchDocument("scum", doc_id);
-    ASSERT(words.empty());
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        auto [words, status] = server.MatchDocument("scum", doc_id);
+        ASSERT(words.empty());
     }
 
-    { SearchServer server;
-    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-    auto [words, status] = server.MatchDocument("in the scum", doc_id);
-    vector<string> raw_query = SplitIntoWords("in the scum");
-    ASSERT(!(words.empty()));
-    ASSERT(raw_query.size() > words.size());
-    ASSERT(words.size() == 2);
-    ASSERT(words[0] == raw_query[0]);
-    ASSERT(words[1] == raw_query[1]);
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        auto [words, status] = server.MatchDocument("in the scum", doc_id);
+        vector<string> raw_query = SplitIntoWords("in the scum");
+        ASSERT(!(words.empty()));
+        ASSERT(raw_query.size() > words.size());
+        ASSERT(words.size() == 2);
+        ASSERT(words[0] == raw_query[0]);
+        ASSERT(words[1] == raw_query[1]);
     }
 
-    { SearchServer server;
-    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-    auto [words, status] = server.MatchDocument("in -the ", doc_id);
-    ASSERT(words.empty());
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        auto [words, status] = server.MatchDocument("in -the ", doc_id);
+        ASSERT(words.empty());
     }
 
-    { SearchServer server;
-    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-    server.SetStopWords("in");
-    auto [words, status] = server.MatchDocument("in the", doc_id);
-    ASSERT(words.size() == 1);
-    ASSERT(words[0] == "the");
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        server.SetStopWords("in");
+        auto [words, status] = server.MatchDocument("in the", doc_id);
+        ASSERT(words.size() == 1);
+        ASSERT(words[0] == "the");
     }
 
 }
@@ -182,6 +187,7 @@ void TestRelevanceCalc() {
     server.AddDocument(3, "Kebab Turkey cs 5"s, DocumentStatus::ACTUAL, { 10, 20, 30 });
     vector<string> raw_query = { "Kebab","cs","5" };
     vector<Document> documents = server.FindTopDocuments("Kebab cs 5");
+    ASSERT(documents.size() == 3);
     double IDF_Kebab = log(3.0 / 1.0);
     double IDF_cs = log(3.0 / 2.0);
     double IDF_5 = log(3.0 / 3.0);
