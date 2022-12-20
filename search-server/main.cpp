@@ -79,17 +79,19 @@ enum class DocumentStatus {
     REMOVED,
 };
 
-bool Chekminus(const string& text) {
-    int size = text.size();
-    if (text[size - 1] == '-') {
+bool Chekminus(const string& text){
+    for(auto word : SplitIntoWords(text)){
+    if(word == "-"s){
         return false;
     }
-    for (int i = 0; i < size - 1; ++i) {
-        if (text[i] == '-' && text[i + 1] == '-') {
-            return false;
-        }
+    if(word[1] == '-'){
+        return false;
     }
-    return true;
+    if(word[word.size()-1] == '-'){
+       return false; 
+    }    
+    }    
+     return true;
 }
 
 class SearchServer {
@@ -100,27 +102,24 @@ public:
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
         for (auto stop_word : stop_words) {
             if (!(IsValidWord(stop_word))) {
-                throw invalid_argument("Одно из переданных стоп слов содержит недопустимые символы с кодами от 0 до 31");
+                throw invalid_argument("ГЋГ¤Г­Г® ГЁГ§ ГЇГҐГ°ГҐГ¤Г Г­Г­Г»Гµ Г±ГІГ®ГЇ Г±Г«Г®Гў Г±Г®Г¤ГҐГ°Г¦ГЁГІ Г­ГҐГ¤Г®ГЇГіГ±ГІГЁГ¬Г»ГҐ Г±ГЁГ¬ГўГ®Г«Г» Г± ГЄГ®Г¤Г Г¬ГЁ Г®ГІ 0 Г¤Г® 31");
             }
         }
-
     }
 
     explicit SearchServer(const string& stop_words_text)
         : SearchServer(
             SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
-    {
-        if (!(IsValidWord(stop_words_text))) {
-            throw invalid_argument("Одно из переданных стоп слов содержит недопустимые символы с кодами от 0 до 31");
-        }
+        {
+            
     }
 
     inline static constexpr int INVALID_DOCUMENT_ID = -1;
 
     void AddDocument(int document_id, const string& document, DocumentStatus status,
         const vector<int>& ratings) {
-        if (count(id.begin(), id.end(), document_id) != 0 || document_id < 0 || !IsValidWord(document)) {
-            throw invalid_argument("Ошибка в добавлении документа");
+        if (documents_.count(document_id) != 0 || document_id < 0 || !IsValidWord(document)) {
+            throw invalid_argument("ГЋГёГЁГЎГЄГ  Гў Г¤Г®ГЎГ ГўГ«ГҐГ­ГЁГЁ Г¤Г®ГЄГіГ¬ГҐГ­ГІГ ");
         }
         const vector<string> words = SplitIntoWordsNoStop(document);
         const double inv_word_count = 1.0 / words.size();
@@ -128,14 +127,13 @@ public:
             word_to_document_freqs_[word][document_id] += inv_word_count;
         }
         documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
-        id.push_back(document_id);
+        index_document_.push_back(document_id);
     }
 
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query,
         DocumentPredicate document_predicate) const {
-
-        if (IsValidWord(raw_query) && Chekminus(raw_query)) {
+        
             const Query query = ParseQuery(raw_query);
 
             auto result = FindAllDocuments(query, document_predicate);
@@ -153,10 +151,7 @@ public:
                 result.resize(MAX_RESULT_DOCUMENT_COUNT);
             }
             return result;
-        }
-        else {
-            throw invalid_argument("Не валидность символов или двойной минус");
-        }
+        
     }
 
 
@@ -177,8 +172,6 @@ public:
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query,
         int document_id) const {
-
-        if (IsValidWord(raw_query) && Chekminus(raw_query)) {
             const Query query = ParseQuery(raw_query);
             vector<string> matched_words;
             for (const string& word : query.plus_words) {
@@ -200,19 +193,13 @@ public:
             }
             return tuple{ matched_words, documents_.at(document_id).status };
         }
-        else {
-            throw invalid_argument("Не валидность символов или двойной минус");
-        }
-    }
-
-
-
+    
     int GetDocumentId(int index) {
         if (index >= 0 && index <= documents_.size()) {
-            return id[index];
+            return index_document_[index];
         }
         else {
-            throw out_of_range("Не соответсвующий Id");
+            throw out_of_range("ГЌГҐ Г±Г®Г®ГІГўГҐГІГ±ГўГіГѕГ№ГЁГ© Id");
         }
     }
 
@@ -227,10 +214,15 @@ private:
         int rating;
         DocumentStatus status;
     };
+    
     const set<string> stop_words_;
+    
     map<string, map<int, double>> word_to_document_freqs_;
+    
     map<int, DocumentData> documents_;
-    vector<int> id;
+    
+    vector<int> index_document_;
+    
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
     }
@@ -263,6 +255,7 @@ private:
     };
 
     QueryWord ParseQueryWord(string text) const {
+        if(IsValidWord(text) && Chekminus(text)){
         bool is_minus = false;
         // Word shouldn't be empty
         if (text[0] == '-') {
@@ -270,6 +263,10 @@ private:
             text = text.substr(1);
         }
         return { text, is_minus, IsStopWord(text) };
+        }
+        else{
+            throw invalid_argument("РћС€РёР±РєР° РІ Р·Р°РїСЂРѕСЃРµ");
+        };
     }
 
     struct Query {
