@@ -79,18 +79,17 @@ enum class DocumentStatus {
     REMOVED,
 };
 
-bool Chekminus(const string& text){
-    for(auto word : SplitIntoWords(text)){
+bool Chekminus(const string& word){
     if(word == "-"s){
         return false;
     }
-    if(word[1] == '-'){
-        return false;
+    if(word.size()>1){
+        if(word[1] == '-'){
+        return false;}
     }
     if(word[word.size()-1] == '-'){
        return false; 
-    }    
-    }    
+    }        
      return true;
 }
 
