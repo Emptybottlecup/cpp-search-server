@@ -19,31 +19,10 @@ public:
             throw invalid_argument("Some of stop words are invalid"s);
         }
     }
- 
+    
     explicit SearchServer(const string& stop_words_text);
  
     void AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings);
- 
-    template <typename DocumentPredicate>
-    vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
-        const auto query = ParseQuery(raw_query);
- 
-        auto matched_documents = FindAllDocuments(query, document_predicate);
- 
-        sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
-            if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
-                return lhs.rating > rhs.rating;
-            }
-            else {
-                return lhs.relevance > rhs.relevance;
-            }
-        });
-        if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
-            matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
-        }
- 
-        return matched_documents;
-    }
  
     vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status) const;
  
@@ -54,7 +33,10 @@ public:
     int GetDocumentId(int index) const;
  
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const;
- 
+    
+ template <typename DocumentPredicate>
+    vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const;
+    
 private:
     struct DocumentData {
         int rating;
@@ -87,12 +69,48 @@ private:
     };
  
     Query ParseQuery(const string& text) const;
+    
+    template <typename DocumentPredicate>
+    vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const;
  
     // Existence required
     double ComputeWordInverseDocumentFreq(const string& word) const;
  
-    template <typename DocumentPredicate>
-    vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
+};
+
+void PrintDocument(const Document& document);
+ 
+void PrintMatchDocumentResult(int document_id, const vector<string>& words, DocumentStatus status);
+ 
+void AddDocument(SearchServer& search_server, int document_id, const string& document, DocumentStatus status,
+    const vector<int>& ratings);
+ 
+void FindTopDocuments(const SearchServer& search_server, const string& raw_query);
+
+
+ template <typename DocumentPredicate>
+    vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
+        const auto query = ParseQuery(raw_query);
+ 
+        auto matched_documents = FindAllDocuments(query, document_predicate);
+ 
+        sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
+            if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                return lhs.rating > rhs.rating;
+            }
+            else {
+                return lhs.relevance > rhs.relevance;
+            }
+        });
+        if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
+            matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+        }
+ 
+        return matched_documents;
+    }
+    
+template <typename DocumentPredicate>
+    vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
         map<int, double> document_to_relevance;
         for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
@@ -122,15 +140,4 @@ private:
         }
         return matched_documents;
     }
-};
-
-void PrintDocument(const Document& document);
  
-void PrintMatchDocumentResult(int document_id, const vector<string>& words, DocumentStatus status);
- 
-void AddDocument(SearchServer& search_server, int document_id, const string& document, DocumentStatus status,
-    const vector<int>& ratings);
- 
-void FindTopDocuments(const SearchServer& search_server, const string& raw_query);
- 
-void MatchDocuments(const SearchServer& search_server, const string& query);
