@@ -10,13 +10,18 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
             throw invalid_argument("Invalid document_id"s);
         }
         const auto words = SplitIntoWordsNoStop(document);
- 
+        set<string> words_;
         const double inv_word_count = 1.0 / words.size();
         for (const string& word : words) {
             word_to_document_freqs_[word][document_id] += inv_word_count;
+            document_id_word_freqs_[document_id][word] += inv_word_count;
+            words_.insert(word);
         }
+        
+    (words_ids[words_]).insert(document_id);
+        
         documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
-        document_ids_.push_back(document_id);
+        document_ids_.insert(document_id);
     }
 
 vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentStatus status) const {
@@ -32,10 +37,36 @@ vector<Document> SearchServer::FindTopDocuments(const string& raw_query, Documen
  int SearchServer::GetDocumentCount() const {
         return documents_.size();
     }
- 
-    int SearchServer::GetDocumentId(int index) const {
-        return document_ids_.at(index);
+
+const std::set<int>::iterator SearchServer::begin() const {
+        return document_ids_.begin();
     }
+
+ const std::set<int>::iterator SearchServer::end() const {
+        return document_ids_.end();
+    }
+   
+map<set<string> , set<int>> SearchServer::GetWordsIds(){
+    return words_ids;
+}
+ const std::map<string, double>& SearchServer::GetWordFrequencies(int document_id) const{
+    if (document_id_word_freqs_.count(document_id) != 0){
+    return document_id_word_freqs_.at(document_id);}
+     
+     return SearchServer::scum;
+}
+
+void SearchServer::RemoveDocument(int document_id){
+    for(auto word : GetWordFrequencies(document_id)){
+        word_to_document_freqs_.at(word.first).erase(document_id);
+        if(word_to_document_freqs_.at(word.first).empty()){
+            word_to_document_freqs_.erase(word.first);
+        }
+    }
+    document_ids_.erase(document_id);
+    document_id_word_freqs_.erase(document_id);
+    documents_.erase(document_id);
+}
 
 tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& raw_query, int document_id) const {
         const auto query = ParseQuery(raw_query);
@@ -172,15 +203,13 @@ void FindTopDocuments(const SearchServer& search_server, const string& raw_query
         cout << "Ошибка поиска: "s << e.what() << endl;
     }
 }
- 
+
 void MatchDocuments(const SearchServer& search_server, const string& query) {
     try {
         cout << "Матчинг документов по запросу: "s << query << endl;
-        const int document_count = search_server.GetDocumentCount();
-        for (int index = 0; index < document_count; ++index) {
-            const int document_id = search_server.GetDocumentId(index);
-            const auto [words, status] = search_server.MatchDocument(query, document_id);
-            PrintMatchDocumentResult(document_id, words, status);
+        for (auto i : search_server) {
+            const auto [words, status] = search_server.MatchDocument(query, i);
+            PrintMatchDocumentResult(i, words, status);
         }
     }
     catch (const invalid_argument& e) {
@@ -188,12 +217,4 @@ void MatchDocuments(const SearchServer& search_server, const string& query) {
     }
 }
 
-
-
-
-
-
-
-
-
-
+ 

@@ -16,5 +16,4 @@ using namespace std;
         << "document_id = "s << document.id << ", "s
         << "relevance = "s << document.relevance << ", "s
         << "rating = "s << document.rating << " }"s;
-    return out;
-}
+    return out;}

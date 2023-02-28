@@ -73,4 +73,3 @@ std::ostream& std::operator<<(ostream& out, const IteratorRange<Iterator>& range
     }
     return out;
 }
-

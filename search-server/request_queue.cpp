@@ -52,4 +52,3 @@ int RequestQueue::GetNoResultRequests() const {
     int RequestQueue::time(){
         return now_time;
     }
-

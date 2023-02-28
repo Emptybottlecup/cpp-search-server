@@ -29,10 +29,19 @@ public:
     vector<Document> FindTopDocuments(const string& raw_query) const;
  
     int GetDocumentCount() const;
- 
-    int GetDocumentId(int index) const;
+  
+const std::set<int>::iterator begin() const;
+
+const std::set<int>::iterator end() const;
+    
+    const std::map<string, double>& GetWordFrequencies(int document_id) const;
+   
+    void RemoveDocument(int document_id);
+    
+  map<set<string>, set<int>> GetWordsIds();
  
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const;
+    
     
  template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const;
@@ -44,9 +53,11 @@ private:
     };
     const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
+    map<int, map<string, double>> document_id_word_freqs_;
     map<int, DocumentData> documents_;
-    vector<int> document_ids_;
- 
+    set<int> document_ids_;
+    map<string, double> scum;
+    map<set<string> , set<int>> words_ids;
     bool IsStopWord(const string& word) const;
  
     static bool IsValidWord(const string& word);
@@ -140,4 +151,3 @@ template <typename DocumentPredicate>
         }
         return matched_documents;
     }
- 
