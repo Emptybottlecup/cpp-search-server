@@ -6,7 +6,7 @@
 #include <cmath>
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
- 
+constexpr auto epsilon = 1e-6;
 using namespace std;
  
 class SearchServer {
@@ -38,7 +38,7 @@ const std::set<int>::iterator end() const;
    
     void RemoveDocument(int document_id);
     
-  map<set<string>, set<int>> GetWordsIds();
+    const map<set<string>, set<int>>& GetWordsIds();
  
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const;
     
@@ -100,13 +100,13 @@ void FindTopDocuments(const SearchServer& search_server, const string& raw_query
 
 
  template <typename DocumentPredicate>
-    vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
+vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
         const auto query = ParseQuery(raw_query);
  
         auto matched_documents = FindAllDocuments(query, document_predicate);
  
         sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
-            if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+            if (abs(lhs.relevance - rhs.relevance) < epsilon) {
                 return lhs.rating > rhs.rating;
             }
             else {
@@ -121,7 +121,7 @@ void FindTopDocuments(const SearchServer& search_server, const string& raw_query
     }
     
 template <typename DocumentPredicate>
-    vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
+vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
         map<int, double> document_to_relevance;
         for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {

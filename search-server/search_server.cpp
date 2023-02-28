@@ -42,14 +42,15 @@ const std::set<int>::iterator SearchServer::begin() const {
         return document_ids_.begin();
     }
 
- const std::set<int>::iterator SearchServer::end() const {
+const std::set<int>::iterator SearchServer::end() const {
         return document_ids_.end();
     }
    
-map<set<string> , set<int>> SearchServer::GetWordsIds(){
+const map<set<string> , set<int>>& SearchServer::GetWordsIds(){
     return words_ids;
 }
- const std::map<string, double>& SearchServer::GetWordFrequencies(int document_id) const{
+
+const std::map<string, double>& SearchServer::GetWordFrequencies(int document_id) const{
     if (document_id_word_freqs_.count(document_id) != 0){
     return document_id_word_freqs_.at(document_id);}
      
