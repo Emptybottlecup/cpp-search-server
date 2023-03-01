@@ -19,7 +19,7 @@ vector<Document> RequestQueue::AddFindRequest(const string& raw_query, DocumentS
         }
         
         return results;
-    }
+}
 
 vector<Document> RequestQueue::AddFindRequest(const string& raw_query) {
         auto const results = search_server.FindTopDocuments(raw_query);
@@ -42,13 +42,12 @@ vector<Document> RequestQueue::AddFindRequest(const string& raw_query) {
         }
         
         return results;
-    }
+}
 
 int RequestQueue::GetNoResultRequests() const {
         return NoResultRequests;
-    }
+}
 
-
-    int RequestQueue::time(){
+int RequestQueue::time(){
         return now_time;
-    }
+}

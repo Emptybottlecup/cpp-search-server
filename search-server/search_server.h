@@ -118,7 +118,7 @@ vector<Document> SearchServer::FindTopDocuments(const string& raw_query, Documen
         }
  
         return matched_documents;
-    }
+}
     
 template <typename DocumentPredicate>
 vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
@@ -150,4 +150,4 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPred
             matched_documents.push_back({ document_id, relevance, documents_.at(document_id).rating });
         }
         return matched_documents;
-    }
+}
