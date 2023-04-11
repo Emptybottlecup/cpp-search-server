@@ -1,10 +1,14 @@
 #pragma once
 #include "document.h"
 #include "string_processing.h"
+#include <execution>
 #include "paginator.h"
+#include <execution>
 #include <map>
 #include <cmath>
-
+#include <deque>
+#include "concurrent_map.h"
+ 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 constexpr auto epsilon = 1e-6;
 using namespace std;
@@ -12,98 +16,132 @@ using namespace std;
 class SearchServer {
 public:
     template <typename StringContainer>
-    explicit SearchServer(const StringContainer& stop_words)
+    SearchServer(const StringContainer& stop_words)
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words))  // Extract non-empty stop words
     {
         if (!all_of(stop_words_.begin(), stop_words_.end(), IsValidWord)) {
             throw invalid_argument("Some of stop words are invalid"s);
         }
     }
+ 
+   SearchServer(const string& stop_words_text)
+        : SearchServer(SplitIntoWords(string_view(stop_words_text))){}
+
+   SearchServer(string_view stop_words_text)
+        : SearchServer(SplitIntoWords(stop_words_text)){}
+ 
+    void AddDocument(int document_id, string_view document, DocumentStatus status, const vector<int>& ratings);
     
-    explicit SearchServer(const string& stop_words_text);
+    template <typename DocumentPredicate>
+vector<Document> FindTopDocuments(execution::parallel_policy,string_view raw_query, DocumentPredicate document_predicate) const;
+    
+    template <typename DocumentPredicate>
+vector<Document> FindTopDocuments(execution::sequenced_policy,string_view raw_query, DocumentPredicate document_predicate) const;
+    
+    template <typename DocumentPredicate>
+vector<Document> FindTopDocuments(string_view raw_query, DocumentPredicate document_predicate) const;
+    
+    vector<Document> FindTopDocuments(string_view raw_query, DocumentStatus status) const;
  
-    void AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings);
+    vector<Document> FindTopDocuments(string_view raw_query) const;
+    
+    vector<Document> FindTopDocuments(execution::parallel_policy,string_view raw_query, DocumentStatus status) const;
  
-    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status) const;
+    vector<Document> FindTopDocuments(execution::parallel_policy,string_view raw_query) const;
+    
+    vector<Document> FindTopDocuments(execution::sequenced_policy,string_view raw_query, DocumentStatus status) const;
  
-    vector<Document> FindTopDocuments(const string& raw_query) const;
+    vector<Document> FindTopDocuments(execution::sequenced_policy,string_view raw_query) const;
+    
+    
  
     int GetDocumentCount() const;
-  
-const std::set<int>::iterator begin() const;
-
-const std::set<int>::iterator end() const;
-    
-    const std::map<string, double>& GetWordFrequencies(int document_id) const;
-   
-    void RemoveDocument(int document_id);
-    
-    const map<set<string>, set<int>>& GetWordsIds();
  
-    tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const;
-    
-    
- template <typename DocumentPredicate>
-    vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const;
+    const std::set<int>::iterator begin() const;
+ 
+    const std::set<int>::iterator end() const;
+ 
+    const std::map<string_view, double>& GetWordFrequencies(int document_id) const;
+ 
+    void RemoveDocument(int document_id);
+ 
+    void RemoveDocument(const std::execution::sequenced_policy&, int document_id);
+ 
+    void RemoveDocument(const std::execution::parallel_policy&, int document_id);
+ 
+    const map<set<string_view>, set<int>>& GetWordsIds();
+ 
+    tuple<vector<string_view>, DocumentStatus> MatchDocument(string_view raw_query, int document_id) const;
+ 
+    tuple<vector<string_view>, DocumentStatus> MatchDocument(const std::execution::sequenced_policy&, string_view raw_query, int document_id) const; 
+ 
+    tuple<vector<string_view>, DocumentStatus> MatchDocument(const std::execution::parallel_policy&, string_view raw_query, int document_id) const;
     
 private:
     struct DocumentData {
         int rating;
         DocumentStatus status;
     };
-    const set<string> stop_words_;
-    map<string, map<int, double>> word_to_document_freqs_;
-    map<int, map<string, double>> document_id_word_freqs_;
+    const set<string,less<>> stop_words_;
+    map<string_view, map<int, double>> word_to_document_freqs_;
+    map<int, map<string_view, double>> document_id_word_freqs_;
     map<int, DocumentData> documents_;
     set<int> document_ids_;
-    map<string, double> scum;
-    map<set<string> , set<int>> words_ids;
-    bool IsStopWord(const string& word) const;
+    map<string_view, double> scum;
+    map<set<string_view> , set<int>> words_ids;
+    deque<string> all_words;
+    bool IsStopWord(string_view word) const;
  
-    static bool IsValidWord(const string& word);
+    static bool IsValidWord(string_view word);
  
-    vector<string> SplitIntoWordsNoStop(const string& text) const;
+    vector<string_view> SplitIntoWordsNoStop(string_view text) const;
  
     static int ComputeAverageRating(const vector<int>& ratings);
  
     struct QueryWord {
-        string data;
+        string_view data;
         bool is_minus;
         bool is_stop;
     };
  
-    QueryWord ParseQueryWord(const string& text) const;
+    QueryWord ParseQueryWord(string_view text) const;
  
     struct Query {
-        set<string> plus_words;
-        set<string> minus_words;
+        vector<string_view> plus_words;
+        vector<string_view> minus_words;
     };
  
-    Query ParseQuery(const string& text) const;
-    
+    Query ParseQuery(string_view text, const bool& flag) const;
+ 
     template <typename DocumentPredicate>
     vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const;
+    
+    template <typename DocumentPredicate>
+    vector<Document> FindAllDocuments(execution::parallel_policy,const Query& query, DocumentPredicate document_predicate) const;
+    
+        template <typename DocumentPredicate>
+        vector<Document> FindAllDocuments(execution::sequenced_policy,const Query& query, DocumentPredicate document_predicate) const;
  
     // Existence required
-    double ComputeWordInverseDocumentFreq(const string& word) const;
+    double ComputeWordInverseDocumentFreq(string_view word) const;
  
 };
-
+ 
 void PrintDocument(const Document& document);
  
-void PrintMatchDocumentResult(int document_id, const vector<string>& words, DocumentStatus status);
+void PrintMatchDocumentResult(int document_id, vector<string_view> words, DocumentStatus status);
  
-void AddDocument(SearchServer& search_server, int document_id, const string& document, DocumentStatus status,
+void AddDocument(SearchServer& search_server, int document_id, string_view document, DocumentStatus status,
     const vector<int>& ratings);
  
-void FindTopDocuments(const SearchServer& search_server, const string& raw_query);
-
-
- template <typename DocumentPredicate>
-vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
-        const auto query = ParseQuery(raw_query);
+void FindTopDocuments(const SearchServer& search_server, string_view raw_query);
  
-        auto matched_documents = FindAllDocuments(query, document_predicate);
+ 
+ template <typename DocumentPredicate>
+vector<Document> SearchServer::FindTopDocuments(execution::sequenced_policy,string_view raw_query, DocumentPredicate document_predicate) const {
+        const auto query = ParseQuery(raw_query, true);
+ 
+        auto matched_documents = FindAllDocuments(execution::seq,query, document_predicate);
  
         sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
             if (abs(lhs.relevance - rhs.relevance) < epsilon) {
@@ -119,11 +157,37 @@ vector<Document> SearchServer::FindTopDocuments(const string& raw_query, Documen
  
         return matched_documents;
 }
-    
+
+ template <typename DocumentPredicate>
+vector<Document> SearchServer::FindTopDocuments(string_view raw_query, DocumentPredicate document_predicate) const { 
+    return FindTopDocuments(execution::seq, raw_query, document_predicate);
+}
+
+ template <typename DocumentPredicate>
+vector<Document> SearchServer::FindTopDocuments(execution::parallel_policy,string_view raw_query, DocumentPredicate document_predicate) const {
+        const auto query = ParseQuery(raw_query, true);
+ 
+        auto matched_documents = FindAllDocuments(execution::par,query, document_predicate);
+ 
+        sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
+            if (abs(lhs.relevance - rhs.relevance) < epsilon) {
+                return lhs.rating > rhs.rating;
+            }
+            else {
+                return lhs.relevance > rhs.relevance;
+            }
+        });
+        if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
+            matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+        }
+ 
+        return matched_documents;
+}
+ 
 template <typename DocumentPredicate>
-vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
+vector<Document> SearchServer::FindAllDocuments(execution::sequenced_policy,const Query& query, DocumentPredicate document_predicate) const {
         map<int, double> document_to_relevance;
-        for (const string& word : query.plus_words) {
+        for (auto word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
@@ -136,7 +200,7 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPred
             }
         }
  
-        for (const string& word : query.minus_words) {
+        for (auto word : query.minus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
@@ -146,6 +210,41 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPred
         }
  
         vector<Document> matched_documents;
+        for (const auto [document_id, relevance] : document_to_relevance) {
+            matched_documents.push_back({ document_id, relevance, documents_.at(document_id).rating });
+        }
+        return matched_documents;
+}
+
+template <typename DocumentPredicate>
+vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
+return FindAllDocuments(execution::seq,query, document_predicate);
+}
+
+template <typename DocumentPredicate>
+vector<Document> SearchServer::FindAllDocuments(execution::parallel_policy,const Query& query, DocumentPredicate document_predicate) const {
+        ConcurrentMap<int,double> mapa(documents_.size());
+        map<int, double> document_to_relevance;
+        for_each(execution::par,query.plus_words.begin(),query.plus_words.end(),[&](auto& word) {
+            if (word_to_document_freqs_.count(word) != 0) {
+            const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
+            for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
+                const auto& document_data = documents_.at(document_id);
+                if (document_predicate(document_id, document_data.status, document_data.rating)) {
+                    mapa[document_id].ref_to_value += term_freq * inverse_document_freq;
+                }
+            }
+            }
+        });
+ 
+        for_each (execution::par,query.minus_words.begin(),query.minus_words.end(),[&](auto& word) {
+            if (word_to_document_freqs_.count(word) != 0) {
+            for (const auto [document_id, _] : word_to_document_freqs_.at(word)) {
+                mapa.erase(document_id);
+            }}
+        });
+        vector<Document> matched_documents;
+        document_to_relevance = move(mapa.BuildOrdinaryMap());
         for (const auto [document_id, relevance] : document_to_relevance) {
             matched_documents.push_back({ document_id, relevance, documents_.at(document_id).rating });
         }
