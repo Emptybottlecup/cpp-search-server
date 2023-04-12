@@ -1,11 +1,11 @@
 #include "search_server.h"
 #include "log_duration.h"
+#include "process_queries.h"
 #include <execution>
 #include <iostream>
 #include <random>
 #include <string>
 #include <vector>
-#include "process_queries.h"
 using namespace std;
 string GenerateWord(mt19937& generator, int max_length) {
     const int length = uniform_int_distribution(1, max_length)(generator);
