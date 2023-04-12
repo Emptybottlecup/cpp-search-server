@@ -63,9 +63,7 @@ vector<Document> FindTopDocuments(string_view raw_query, DocumentPredicate docum
     void RemoveDocument(const std::execution::sequenced_policy&, int document_id);
  
     void RemoveDocument(const std::execution::parallel_policy&, int document_id);
- 
-    const map<set<string_view>, set<int>>& GetWordsIds();
- 
+    
     tuple<vector<string_view>, DocumentStatus> MatchDocument(string_view raw_query, int document_id) const;
  
     tuple<vector<string_view>, DocumentStatus> MatchDocument(const std::execution::sequenced_policy&, string_view raw_query, int document_id) const; 
@@ -82,7 +80,6 @@ private:
     map<int, map<string_view, double>> document_id_word_freqs_;
     map<int, DocumentData> documents_;
     set<int> document_ids_;
-    map<set<string_view> , set<int>> words_ids;
     deque<string> all_words;
     bool IsStopWord(string_view word) const;
  

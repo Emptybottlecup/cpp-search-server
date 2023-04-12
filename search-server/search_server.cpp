@@ -14,9 +14,7 @@ void SearchServer::AddDocument(int document_id, string_view document, DocumentSt
             document_id_word_freqs_[document_id][string_view(all_words.back())] += inv_word_count;
             words_.emplace(string_view(all_words.back()));
         }
-        
-    (words_ids[words_]).insert(document_id);
-        
+    
         documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
         document_ids_.insert(document_id);
 }
@@ -42,11 +40,7 @@ const std::set<int>::iterator SearchServer::begin() const {
 const std::set<int>::iterator SearchServer::end() const {
         return document_ids_.end();
 }
- 
-const map<set<string_view> , set<int>>& SearchServer::GetWordsIds(){
-    return words_ids;
-}
- 
+
 const std::map<string_view, double>& SearchServer::GetWordFrequencies(int document_id) const{
     static map<string_view, double> empty_dictionary{};
     if (document_id_word_freqs_.count(document_id) != 0){
